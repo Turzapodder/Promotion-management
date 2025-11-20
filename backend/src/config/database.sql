@@ -34,3 +34,20 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
+
+-- Products table
+CREATE TABLE IF NOT EXISTS products (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  price DECIMAL(10, 2) NOT NULL,
+  stock INTEGER DEFAULT 0,
+  is_enabled BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_products_is_enabled ON products(is_enabled);
+
+CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

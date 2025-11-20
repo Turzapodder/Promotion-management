@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
+import productRoutes from './routes/productRoutes';
 import { errorHandler } from './middlewares/errorHandler';
 
 dotenv.config();
@@ -52,6 +53,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
 
 // 404 handler
 app.use((req, res) => {
