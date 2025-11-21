@@ -8,6 +8,7 @@ import DashboardHome from "./pages/DashboardHome"
 import OrdersPage from "./pages/OrdersPage"
 import PromotionsPage from "./pages/PromotionsPage"
 import ProductsPage from "./pages/ProductsPage"
+import ProductEditPage from "./pages/ProductEditPage"
 import { AuthProvider } from "./hooks/useAuth"
 import { queryClient } from './lib/queryClient'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -30,6 +31,8 @@ function App() {
             <Route path="orders" element={<OrdersPage />} />
             <Route path="promotions" element={<PromotionsPage />} />
             <Route path="products" element={<ProductsPage />} />
+            <Route path="products/new" element={<ProductEditPage />} />
+            <Route path="products/:id/edit" element={<ProductEditPage />} />
           </Route>
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
