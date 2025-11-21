@@ -3,39 +3,16 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import LoginPage from "./pages/LoginPage"
 import SignupPage from "./pages/SignupPage"
-import { AuthProvider, useAuth } from "./hooks/useAuth"
+import DashboardPage from "./pages/DashboardPage"
+import DashboardHome from "./pages/DashboardHome"
+import OrdersPage from "./pages/OrdersPage"
+import PromotionsPage from "./pages/PromotionsPage"
+import ProductsPage from "./pages/ProductsPage"
+import { AuthProvider } from "./hooks/useAuth"
 import { queryClient } from './lib/queryClient'
 import { ProtectedRoute } from './components/ProtectedRoute'
-import { Button } from './components/ui/button'
 
-// Simple Dashboard component for demonstration
-const Dashboard = () => {
-  const { user, logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-  };
-
-  return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <Button onClick={handleLogout} variant="outline">Logout</Button>
-        </div>
-        <div className="space-y-4">
-          <p>Welcome, {user?.first_name || user?.email}!</p>
-          <div className="bg-card p-6 rounded-lg">
-            <h2 className="text-xl font-semibold mb-2">Profile Information</h2>
-            <p><strong>Email:</strong> {user?.email}</p>
-            <p><strong>Name:</strong> {user?.first_name} {user?.last_name}</p>
-            <p><strong>Verified:</strong> {user?.is_verified ? 'Yes' : 'No'}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+ 
 
 function App() {
   return (
@@ -46,9 +23,14 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
-              <Dashboard />
+              <DashboardPage />
             </ProtectedRoute>
-          } />
+          }>
+            <Route index element={<DashboardHome />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="promotions" element={<PromotionsPage />} />
+            <Route path="products" element={<ProductsPage />} />
+          </Route>
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>

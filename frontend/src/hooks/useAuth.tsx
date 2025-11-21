@@ -17,14 +17,13 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
 
-  // Fetch user profile on mount if authenticated
-  const { data: profileData } = useQuery({
+  const isAuthEnabled = apiClient.isAuthenticated();
+  const { data: profileData, isLoading: profileLoading } = useQuery({
     queryKey: ['profile'],
     queryFn: () => apiClient.getProfile(),
-    enabled: apiClient.isAuthenticated(),
+    enabled: isAuthEnabled,
     retry: false,
   });
 
@@ -32,8 +31,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (profileData) {
       setUser(profileData);
     }
-    setLoading(false);
-  }, []);
+  }, [profileData]);
 
   // Login mutation
   const loginMutation = useMutation({
@@ -69,7 +67,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const value: AuthContextType = {
     user,
-    loading,
+    loading: isAuthEnabled ? profileLoading : false,
     login,
     signup,
     logout,
