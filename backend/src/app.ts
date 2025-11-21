@@ -5,6 +5,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
+import promotionRoutes from './routes/promotionRoutes';
+import orderRoutes from './routes/orderRoutes';
 import { errorHandler } from './middlewares/errorHandler';
 
 dotenv.config();
@@ -24,11 +26,11 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
+  origin: process.env.NODE_ENV === 'production'
     ? process.env.CORS_ORIGIN?.split(',') || false
     : ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
@@ -54,6 +56,8 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/promotions', promotionRoutes);
+app.use('/api/orders', orderRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -40,9 +40,19 @@ export default function PromotionsPage() {
 
   const handleSubmit = (payload: any) => {
     if (editId) {
-      updatePromotion(editId, { title: payload.title, startDate: payload.startDate, endDate: payload.endDate })
+      updatePromotion(editId, { startDate: payload.startDate, endDate: payload.endDate })
     } else {
-      addPromotion({ title: payload.title, startDate: payload.startDate, endDate: payload.endDate, enabled: payload.enabled })
+      addPromotion({
+        title: payload.title,
+        description: payload.description,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        banner: payload.banner,
+        enabled: payload.enabled,
+        discountType: payload.discountType,
+        percentageRate: payload.percentageRate,
+        fixedAmount: payload.fixedAmount,
+      })
     }
   }
 

@@ -1,33 +1,88 @@
-import { useEffect, useMemo, useState } from 'react'
-import { MOCK_PROMOTIONS } from './data'
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api'
 import type { Promotion, PromotionsTab, SortDir, SortKey } from './types'
 
 export function usePromotions() {
-  const [state, setState] = useState<Promotion[]>(() => {
-    const raw = localStorage.getItem('promotions')
-    if (raw) {
-      try { return JSON.parse(raw) as Promotion[] } catch { return MOCK_PROMOTIONS }
-    }
-    return MOCK_PROMOTIONS
+  const queryClient = useQueryClient()
+  const { data: serverPromotions = [] } = useQuery({
+    queryKey: ['promotions'],
+    queryFn: () => apiClient.getPromotions(),
   })
+  const state: Promotion[] = useMemo(() => {
+    return serverPromotions.map((p) => ({
+      id: String(p.id),
+      title: p.title,
+      description: (p as any).description,
+      startDate: p.start_date,
+      endDate: p.end_date,
+      banner: (p as any).banner_url,
+      enabled: !!p.enabled,
+      discountType: (p as any).discount_type,
+      percentageRate: (p as any).percentage_rate,
+      fixedAmount: (p as any).fixed_amount,
+    }))
+  }, [serverPromotions])
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('startDate')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [tab, setTab] = useState<PromotionsTab>('all')
 
-  const addPromotion = (p: Omit<Promotion, 'id'>) => {
-    const id = `pr-${Math.random().toString(36).slice(2, 8)}`
-    setState((prev) => [{ id, ...p }, ...prev])
-  }
+  const createMutation = useMutation({
+    mutationFn: (p: Omit<Promotion, 'id'>) => apiClient.createPromotion({
+      title: p.title,
+      description: p.description,
+      start_date: p.startDate,
+      end_date: p.endDate,
+      banner_url: p.banner,
+      enabled: p.enabled,
+      discount_type: (p as any).discountType,
+      percentage_rate: (p as any).percentageRate,
+      fixed_amount: (p as any).fixedAmount,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['promotions'] })
+    },
+  })
+  const addPromotion = (p: Omit<Promotion, 'id'>) => createMutation.mutate(p)
+
+  const deleteMutation = useMutation({
+    mutationFn: (idNum: number) => apiClient.deletePromotion(idNum),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['promotions'] })
+    },
+  })
   const removePromotion = (id: string) => {
-    setState((prev) => prev.filter((x) => x.id !== id))
+    const idNum = parseInt(id, 10)
+    if (!Number.isNaN(idNum)) deleteMutation.mutate(idNum)
   }
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: number; updates: Partial<Promotion> }) => apiClient.updatePromotion(id, {
+      title: updates.title,
+      start_date: updates.startDate,
+      end_date: updates.endDate,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['promotions'] })
+    },
+  })
   const updatePromotion = (id: string, updates: Partial<Promotion>) => {
-    setState((prev) => prev.map((x) => (x.id === id ? { ...x, ...updates } : x)))
+    const idNum = parseInt(id, 10)
+    if (!Number.isNaN(idNum)) updateMutation.mutate({ id: idNum, updates })
   }
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) => apiClient.setPromotionEnabled(id, enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['promotions'] })
+    },
+  })
   const toggleEnabled = (id: string) => {
-    setState((prev) => prev.map((x) => (x.id === id ? { ...x, enabled: !x.enabled } : x)))
+    const current = state.find((x) => x.id === id)
+    const idNum = parseInt(id, 10)
+    if (current && !Number.isNaN(idNum)) toggleMutation.mutate({ id: idNum, enabled: !current.enabled })
   }
   const getPromotionById = (id: string) => state.find((x) => x.id === id)
 
@@ -60,9 +115,7 @@ export function usePromotions() {
     setQuery('')
   }
 
-  useEffect(() => {
-    try { localStorage.setItem('promotions', JSON.stringify(state)) } catch { /* empty */ }
-  }, [state])
+  
 
   return {
     promotions: visible,

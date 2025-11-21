@@ -1,26 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { useOrders } from '@/features/orders/useOrders'
 import { useProducts } from '@/features/products/useProducts'
-import { ProductSearchDropdown } from '@/features/products/components/ProductSearchDropdown'
+import { usePromotions } from '@/features/promotions/usePromotions'
+import { OrderProductsCard } from '@/features/orders/components/OrderProductsCard'
+import { OrderPaymentCard } from '@/features/orders/components/OrderPaymentCard'
+import { OrderStatusTimeline } from '@/features/orders/components/OrderStatusTimeline'
+import { OrderPromotionCard } from '@/features/orders/components/OrderPromotionCard'
+import { OrderNotesCard } from '@/features/orders/components/OrderNotesCard'
+import { OrderShippingAddressCard } from '@/features/orders/components/OrderShippingAddressCard'
 
 export default function OrderCreatePage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { addOrder, updateOrder, getOrderById } = useOrders()
+  const { addOrder,  getOrderById } = useOrders()
   const { allProducts, query, setQuery, suggestions, setSearch } = useProducts()
+  const { allPromotions } = usePromotions()
 
   const existing = id ? getOrderById(id) : undefined
-  const isNew = !existing
+  const isNew = !id
 
-  const [items, setItems] = useState(existing?.lineItems || [])
-  const [discount, setDiscount] = useState(existing?.discount || 0)
+  const [items, setItems] = useState((existing?.lineItems || []).map((li) => ({ ...li, price: Number(li.price), qty: Number(li.qty) || 1 })))
+  const [promotionId, setPromotionId] = useState<string>('')
   const [shippingCost, setShippingCost] = useState(existing?.shippingCost || 0)
   const [notes, setNotes] = useState(existing?.notes || '')
+  const [orderStatus, setOrderStatus] = useState<'Created' | 'Shipped' | 'Delivered' | 'Complete'>('Created')
   const [shippingAddress, setShippingAddress] = useState({
     name: existing?.shippingAddress?.name || '',
     address: existing?.shippingAddress?.address || '',
@@ -32,11 +37,125 @@ export default function OrderCreatePage() {
   })
 
   useEffect(() => {
-    if (!isNew && !existing) navigate('/dashboard/orders')
-  }, [isNew, existing, navigate])
+    if (!isNew && id) {
+      import('@/lib/api').then(({ apiClient }) => {
+        const numId = parseInt(id, 10)
+        if (Number.isNaN(numId)) return
+        apiClient.getOrderById(numId).then((data) => {
+          if (!data) {
+            navigate('/dashboard/orders')
+            return
+          }
+          const order = (data as any).order
+          const orderItems = (data as any).items || []
+          setItems(orderItems.map((it: any) => ({ productId: String(it.product_id), name: it.name, price: Number(it.unit_price), qty: Number(it.quantity) || 1 })))
+          setShippingCost(Number(order.shipping_cost) || 0)
+          setNotes(order.notes || '')
+          setPromotionId(order.promotion_id ? String(order.promotion_id) : '')
+          setOrderStatus((order as any).status || 'Created')
+          setShippingAddress({
+            name: order.customer_name || '',
+            address: order.customer_address || '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            phone: order.customer_phone || '',
+          })
+        }).catch(() => {})
+      })
+    }
+  }, [isNew, id, navigate])
 
-  const subtotal = useMemo(() => items.reduce((sum, it) => sum + it.price * it.qty, 0), [items])
-  const total = useMemo(() => Math.max(0, subtotal - (discount || 0) + (shippingCost || 0)), [subtotal, discount, shippingCost])
+  const subtotal = useMemo(() => items.reduce((sum, it) => sum + Number(it.price) * it.qty, 0), [items])
+  const itemsCount = useMemo(() => items.reduce((sum, it) => sum + it.qty, 0), [items])
+  const promotion = useMemo(() => allPromotions.find((p) => p.id === promotionId), [allPromotions, promotionId])
+  const [slabs, setSlabs] = useState<Array<{ min_weight: number; max_weight: number; unit_weight: number; unit_discount: number }>>([])
+  useEffect(() => {
+    setSlabs([])
+    if (promotionId && promotion?.discountType === 'weighted') {
+      const idNum = parseInt(promotionId, 10)
+      if (!Number.isNaN(idNum)) {
+        import('@/lib/api').then(({ apiClient }) => {
+          apiClient.getPromotionSlabs(idNum).then((rows) => {
+            setSlabs(rows.map((r: any) => ({ min_weight: r.min_weight, max_weight: r.max_weight, unit_weight: r.unit_weight, unit_discount: r.unit_discount })))
+          }).catch(() => {})
+        })
+      }
+    }
+  }, [promotionId, promotion])
+  const computedDiscounts = useMemo(() => {
+    const perLine = items.map((it) => {
+      const unitPrice = Number(it.price)
+      const lineSubtotal = unitPrice * it.qty
+      return { lineSubtotal, lineDiscount: 0 }
+    })
+
+    if (!promotion) return perLine
+
+    if (promotion.discountType === 'percentage') {
+      const rate = Number(promotion.percentageRate)
+      return perLine.map((c) => {
+        const d = !Number.isNaN(rate) && rate > 0 ? (c.lineSubtotal * rate) / 100 : 0
+        const lineDiscount = Math.min(d, c.lineSubtotal)
+        return { lineSubtotal: c.lineSubtotal, lineDiscount }
+      })
+    }
+
+    if (promotion.discountType === 'fixed') {
+      const amt = Number(promotion.fixedAmount)
+      return perLine.map((c, idx) => {
+        const qty = items[idx]?.qty ?? 0
+        const d = !Number.isNaN(amt) && amt > 0 ? amt * qty : 0
+        const lineDiscount = Math.min(d, c.lineSubtotal)
+        return { lineSubtotal: c.lineSubtotal, lineDiscount }
+      })
+    }
+
+    if (promotion.discountType === 'weighted' && slabs.length > 0) {
+      const weights = items.map((it) => {
+        const p = allProducts.find((x) => x.id === String(it.productId))
+        const unitWeightVal = Number(p?.weight ?? 0)
+        const unitWeightGrams = (p?.weight_unit === 'kg' ? unitWeightVal * 1000 : unitWeightVal)
+        return unitWeightGrams * it.qty
+      })
+      const totalWeight = weights.reduce((s, w) => s + w, 0)
+      const slab = slabs.find((s) => totalWeight >= s.min_weight && totalWeight <= s.max_weight)
+      let orderDiscount = 0
+      if (slab) {
+        const discountUnits = Math.max(1, Math.floor(totalWeight / Number(slab.unit_weight)))
+        orderDiscount = Number(slab.unit_discount) * discountUnits
+      }
+      const sumSubtotal = perLine.reduce((s, c) => s + c.lineSubtotal, 0)
+      const cappedOrderDiscount = Math.min(orderDiscount, sumSubtotal)
+      const allocations = weights.map((w) => (totalWeight > 0 ? (cappedOrderDiscount * (w / totalWeight)) : 0))
+      return perLine.map((c, idx) => {
+        const raw = allocations[idx]
+        const lineDiscount = Math.min(raw, c.lineSubtotal)
+        return { lineSubtotal: c.lineSubtotal, lineDiscount }
+      })
+    }
+
+    return perLine
+  }, [items, promotion, slabs, allProducts])
+  const discountTotal = useMemo(() => computedDiscounts.reduce((sum, d) => sum + d.lineDiscount, 0), [computedDiscounts])
+  const total = useMemo(() => Math.max(0, subtotal - discountTotal + Math.max(0, shippingCost || 0)), [subtotal, discountTotal, shippingCost])
+  const promotionLabel = useMemo(() => {
+    if (!promotion) return '-'
+    return promotion.title ? promotion.title : (promotion.discountType || '-')
+  }, [promotion])
+  const totalWeightLb = useMemo(() => {
+    let grams = 0
+    for (const it of items) {
+      const p = allProducts.find((x) => x.id === String(it.productId))
+      if (!p) continue
+      const unitWeightKg = (p?.weight ?? 0)
+      const unitWeightGrams = (p?.weight_unit === 'kg' ? unitWeightKg * 1000 : unitWeightKg)
+      grams += unitWeightGrams * it.qty
+    }
+    const lb = (grams / 1000)
+    return Math.max(0, lb)
+  }, [items, allProducts])
 
   const addItemByName = (name: string) => {
     setSearch(name)
@@ -49,7 +168,7 @@ export default function OrderCreatePage() {
         next[existingIndex] = { ...next[existingIndex], qty: next[existingIndex].qty + 1 }
         return next
       }
-      return [{ productId: p.id, name: p.name, price: p.price, qty: 1 }, ...prev]
+      return [{ productId: p.id, name: p.name, price: Number(p.price), qty: 1 }, ...prev]
     })
   }
 
@@ -63,25 +182,27 @@ export default function OrderCreatePage() {
 
   const save = () => {
     const payload = {
-      orderNo: isNew ? `#${Math.floor(Math.random() * 9000) + 1000}` : existing!.orderNo,
-      date: isNew ? new Date().toISOString().slice(0, 10) : existing!.date,
-      customer: existing?.customer || 'Walk-in',
-      payment: existing?.payment || 'pending',
-      total,
-      delivery: existing?.delivery || 'N/A',
-      items: items.length,
-      fulfillment: existing?.fulfillment || 'unfulfilled',
-      status: existing?.status || 'open',
-      lineItems: items,
+      customer_name: shippingAddress.name || 'Walk-in',
+      customer_address: shippingAddress.address || '',
+      customer_phone: shippingAddress.phone || '',
       notes,
-      shippingAddress,
-      discount,
-      shippingCost,
+      promotion_id: promotionId ? parseInt(promotionId, 10) : undefined,
+      shipping_cost: Math.max(0, shippingCost || 0),
+      items: items.map((it) => {
+        const p = allProducts.find((x) => x.id === String(it.productId))
+        const unitWeightKg = (p?.weight ?? 0)
+        const unitWeight = (p?.weight_unit === 'kg' ? unitWeightKg * 1000 : unitWeightKg)
+        return {
+          product_id: parseInt(String(it.productId), 10),
+          name: it.name,
+          unit_price: Number(it.price),
+          quantity: it.qty,
+          unit_weight: unitWeight,
+        }
+      }),
     }
     if (isNew) {
       addOrder(payload)
-    } else {
-      updateOrder(existing!.id, payload)
     }
     navigate('/dashboard/orders')
   }
@@ -99,86 +220,50 @@ export default function OrderCreatePage() {
 
       <div className="grid grid-cols-1 gap-6 @xl/main:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Products</CardTitle>
-              <CardDescription>Search products to add</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ProductSearchDropdown query={query} onQuery={setQuery} suggestions={suggestions} onSelect={addItemByName} />
-              <Separator />
-              <div className="space-y-3">
-                {items.map((it) => (
-                  <div key={it.productId} className="flex items-center justify-between gap-3 rounded-md border p-3">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{it.name}</span>
-                      <span className="text-muted-foreground text-xs">${it.price.toFixed(2)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input type="number" value={it.qty} onChange={(e) => updateQty(it.productId, Math.max(1, Number(e.target.value) || 1))} className="w-20" />
-                      <Button variant="outline" onClick={() => removeItem(it.productId)}>Remove</Button>
-                    </div>
-                  </div>
-                ))}
-                {items.length === 0 && <div className="text-muted-foreground text-sm">No items added</div>}
-              </div>
-            </CardContent>
-          </Card>
+          <OrderProductsCard
+            items={items}
+            products={allProducts as any}
+            discounts={computedDiscounts as any}
+            query={query}
+            onQuery={setQuery}
+            suggestions={suggestions as any}
+            onSelect={addItemByName}
+            onQtyChange={updateQty}
+            onRemove={removeItem}
+          />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment</CardTitle>
-              <CardDescription>Summary</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm">Discount</label>
-                  <Input type="number" value={discount} onChange={(e) => setDiscount(Number(e.target.value) || 0)} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm">Shipping</label>
-                  <Input type="number" value={shippingCost} onChange={(e) => setShippingCost(Number(e.target.value) || 0)} />
-                </div>
-              </div>
-              <Separator />
-              <div className="flex flex-col gap-1 text-sm">
-                <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span>Discount</span><span>-${(discount || 0).toFixed(2)}</span></div>
-                <div className="flex justify-between"><span>Shipping</span><span>${(shippingCost || 0).toFixed(2)}</span></div>
-                <div className="flex justify-between font-semibold"><span>Total</span><span>${total.toFixed(2)}</span></div>
-              </div>
-            </CardContent>
-          </Card>
+          <OrderPaymentCard
+            itemsCount={itemsCount}
+            subtotal={subtotal}
+            promotionLabel={promotionLabel}
+            discountTotal={discountTotal}
+            shippingCost={shippingCost}
+            onShippingCost={(v) => setShippingCost(v)}
+            totalWeightKg={totalWeightLb}
+            total={total}
+          />
+
+          <OrderStatusTimeline
+            value={orderStatus}
+            onChange={(v) => {
+              setOrderStatus(v)
+              if (!isNew && id) {
+                import('@/lib/api').then(({ apiClient }) => {
+                  const numId = parseInt(id, 10)
+                  if (!Number.isNaN(numId)) {
+                    apiClient.updateOrderStatus(numId, v as any).catch(() => {})
+                  }
+                })
+              }
+            }}
+            canPatch={true}
+          />
         </div>
 
         <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="bg-background border-input w-full rounded-md border p-3 text-sm" rows={6} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Shipping address</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Input placeholder="Name" value={shippingAddress.name} onChange={(e) => setShippingAddress({ ...shippingAddress, name: e.target.value })} />
-              <Input placeholder="Address" value={shippingAddress.address} onChange={(e) => setShippingAddress({ ...shippingAddress, address: e.target.value })} />
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="City" value={shippingAddress.city} onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })} />
-                <Input placeholder="State" value={shippingAddress.state} onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="Zip" value={shippingAddress.zip} onChange={(e) => setShippingAddress({ ...shippingAddress, zip: e.target.value })} />
-                <Input placeholder="Country" value={shippingAddress.country} onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })} />
-              </div>
-              <Input placeholder="Phone" value={shippingAddress.phone} onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })} />
-            </CardContent>
-          </Card>
+          <OrderPromotionCard promotionId={promotionId} onPromotionId={setPromotionId} promotions={allPromotions as any} promotion={promotion as any} />
+          <OrderNotesCard notes={notes} onNotes={setNotes} />
+          <OrderShippingAddressCard value={shippingAddress} onChange={(v) => setShippingAddress(v as any)} />
         </div>
       </div>
 

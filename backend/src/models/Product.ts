@@ -61,5 +61,10 @@ export const ProductModel = {
   async findAllEnabled(): Promise<Product[]> {
     const result = await pool.query('SELECT * FROM products WHERE is_enabled = true ORDER BY created_at DESC');
     return result.rows;
+  },
+
+  async findAll(): Promise<Product[]> {
+    const result = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
+    return result.rows;
   }
 };

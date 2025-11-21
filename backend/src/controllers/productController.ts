@@ -42,3 +42,13 @@ export const getEnabledProducts = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message });
   }
 };
+
+export const getAllProducts = async (req: Request, res: Response) => {
+  try {
+    const products = await ProductModel.findAll();
+    res.json({ success: true, message: 'Products fetched', data: products });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch products';
+    res.status(500).json({ success: false, message });
+  }
+};

@@ -25,7 +25,11 @@ export function PromotionsTable({ promotions, onDelete, onEdit, onToggle }: { pr
               <Checkbox aria-label="Select all" />
             </TableHead>
             <TableHead>Promotion</TableHead>
-            <TableHead>Dates</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Value</TableHead>
+            <TableHead>Start Date</TableHead>
+            <TableHead>End Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="w-14">Action</TableHead>
           </TableRow>
@@ -36,8 +40,41 @@ export function PromotionsTable({ promotions, onDelete, onEdit, onToggle }: { pr
               <TableCell>
                 <Checkbox checked={!!selected[p.id]} onCheckedChange={() => toggleSelect(p.id)} aria-label={`Select ${p.title}`} />
               </TableCell>
-              <TableCell className="font-medium">{p.title}</TableCell>
-              <TableCell>{p.startDate} → {p.endDate}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  {p.banner ? (
+                    <img src={p.banner} alt={p.title} className="h-10 w-16 rounded-md object-cover" />
+                  ) : (
+                    <div className="h-10 w-16 rounded-md border bg-muted flex items-center justify-center text-[10px] text-muted-foreground">
+                      Banner
+                    </div>
+                  )}
+                  <span className="font-medium">{p.title}</span>
+                </div>
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground truncate max-w-[240px]">{p.description || '-'}</TableCell>
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  className={
+                    p.discountType === 'percentage'
+                      ? 'bg-blue-100 text-blue-700 border-blue-200'
+                      : p.discountType === 'fixed'
+                      ? 'bg-purple-100 text-purple-700 border-purple-200'
+                      : p.discountType === 'weighted'
+                      ? 'bg-slate-100 text-slate-700 border-slate-200'
+                      : 'bg-gray-100 text-gray-700 border-gray-200'
+                  }
+                >
+                  {p.discountType ? p.discountType : '—'}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-sm">
+                {p.discountType === 'percentage' && typeof p.percentageRate === 'number' ? `${p.percentageRate}%` : ''}
+                {p.discountType === 'fixed' && typeof p.fixedAmount === 'number' ? `${p.fixedAmount} tk` : ''}
+              </TableCell>
+              <TableCell>{new Date(p.startDate).toLocaleDateString()} </TableCell>
+              <TableCell>{new Date(p.endDate).toLocaleDateString()} </TableCell>
               <TableCell>
                 <Badge variant="outline" className={p.enabled ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}>
                   {p.enabled ? 'Enabled' : 'Disabled'}

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import type { Promotion } from '@/features/promotions/types'
@@ -30,7 +31,7 @@ export function PromotionSearchDropdown({
   }, [])
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative min-w-[200px]">
       <Input placeholder="Search promotions" value={query} onChange={(e) => onQuery(e.target.value)} className="max-w-xs" onFocus={() => setOpen(suggestions.length > 0)} />
       {open && (
         <div className="bg-popover text-popover-foreground absolute z-50 mt-2 w-[300px] rounded-lg border shadow-md">

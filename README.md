@@ -1,151 +1,187 @@
-# Full-Stack Authentication App
+# Promotion Management
 
-A modern full-stack application with React frontend and Express.js backend, featuring authentication pages with routing.
+Comprehensive monorepo for managing products, promotions, and orders. It contains a TypeScript Express backend with PostgreSQL and a React + Vite frontend.
 
-## 🏗️ Project Structure
+## Structure
 
-```
-practice/
-├── frontend/          # React + TypeScript + Vite
-│   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   │   ├── ui/       # shadcn/ui components
-│   │   │   ├── login-form.tsx
-│   │   │   └── signup-form.tsx
-│   │   ├── pages/        # Page components
-│   │   │   ├── LoginPage.tsx
-│   │   │   └── SignupPage.tsx
-│   │   ├── lib/          # Utilities
-│   │   └── App.tsx       # Main app with routing
-│   └── package.json
-└── backend/           # Express.js + TypeScript
-    ├── src/
-    │   └── index.ts      # Server entry point
-    └── package.json
-```
+- `backend/` — Express API, PostgreSQL, JWT auth, validation, rate limiting
+- `frontend/` — React 19, Vite, Tailwind (v4), shadcn/ui, React Query
 
-## 🚀 Quick Start
+## Tech Stack
 
-### Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev          # Development server (http://localhost:5173)
-```
+- Backend: Node.js, Express 5, TypeScript, PostgreSQL, JWT, Helmet, CORS, express-validator
+- Frontend: React 19, Vite 7, TypeScript, Tailwind CSS 4, Radix UI, shadcn/ui, TanStack Query, React Router
 
-### Backend Setup
-```bash
-cd backend
-npm install
-npm run dev          # Development server (http://localhost:3000)
-```
+## Backend
 
-## 🛠️ Tech Stack
+### Scripts
 
-### Frontend
-- **React 19** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **React Router** - Client-side routing
-- **Tailwind CSS** - Styling
-- **shadcn/ui** - UI component library
-- **Lucide React** - Icons
+- `npm run dev` — start dev server with hot reload (`ts-node-dev`)
+- `npm run build` — compile TypeScript to `dist/`
+- `npm run start` — run compiled server
 
-### Backend
-- **Express.js** - Web framework
-- **TypeScript** - Type safety
-- **ts-node-dev** - Development server
+### Environment Variables
 
-## 📱 Features
+- `DATABASE_URL` — PostgreSQL connection string
+- `NODE_ENV` — `development` or `production`
+- `CORS_ORIGIN` — comma-separated origins for production CORS (e.g. `https://app.example.com,https://admin.example.com`)
+- `JWT_SECRET` — required; secret for access tokens
+- `JWT_REFRESH_SECRET` — optional; defaults to `JWT_SECRET`
+- `ACCESS_TOKEN_EXPIRES_IN` — default `15m`
+- `REFRESH_TOKEN_EXPIRES_IN` — default `7d`
 
-### Current Implementation
-- ✅ Login/Signup page routing (`/login`, `/signup`)
-- ✅ Responsive authentication forms
-- ✅ Modern UI with shadcn/ui components
-- ✅ TypeScript throughout
-- ✅ Hot reload for development
+### Run Locally
 
-### Authentication Forms
-- **Login**: Email/password + OAuth buttons (Apple, Google)
-- **Signup**: Name, email, password confirmation
-- **Navigation**: Seamless routing between forms
+1. Create `.env` in `backend/`:
 
-## 🔧 Available Scripts
+   ```env
+   DATABASE_URL=postgresql://user:password@localhost:5432/promotion_db
+   NODE_ENV=development
+   JWT_SECRET=replace-with-strong-secret
+   JWT_REFRESH_SECRET=replace-with-strong-secret
+   ACCESS_TOKEN_EXPIRES_IN=15m
+   REFRESH_TOKEN_EXPIRES_IN=7d
+   CORS_ORIGIN=http://localhost:5173
+   ```
 
-### Frontend
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
+2. Install dependencies: `npm install` in `backend/`
+3. Start dev server: `npm run dev`
+4. Health check: `GET http://localhost:3000/health`
 
-### Backend
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Compile TypeScript
-- `npm start` - Run production build
+### Database
 
-## 🎨 UI Components
+- Connection via `pg` Pool using `DATABASE_URL`
+- Baseline schema in `src/config/database.sql` for `users`, `refresh_tokens`, `products`
+- Startup migrations in `src/server.ts` ensure:
+  - `products` extra columns: `image_url`, `status`, `weight`, `weight_unit`
+  - Promotions tables: `promotions`, `promotion_slabs`
+  - Orders tables: `orders`, `order_items`
 
-Built with **shadcn/ui** (New York style):
-- Form components (Field, Input, Button)
-- Card layouts
-- Responsive design
-- Dark/light theme support
+### API Overview
 
-## 🛣️ Routing
+- Base URL: `http://localhost:3000`
+- Auth: `Bearer <access-token>` required for protected routes
 
-- `/` → Redirects to `/login`
-- `/login` → Login page
-- `/signup` → Signup page
+#### Auth (`/api/auth`)
 
-## 📝 Next Steps
+- `POST /signup` — register user
+- `POST /login` — login, returns `accessToken` and `refreshToken`
+- `GET /profile` — get current user (auth required)
+- `PUT /profile` — update profile (auth required)
+- `POST /change-password` — change password (auth required)
+- `POST /refresh` — refresh tokens
+- `POST /logout` — revoke refresh token
 
-### Backend Development
-1. Add authentication endpoints (`/api/auth/login`, `/api/auth/signup`)
-2. Implement JWT token handling
-3. Add password hashing (bcrypt)
-4. Database integration (MongoDB/PostgreSQL)
-5. Input validation middleware
+Rate limiting: sign-up/login guarded by `authRateLimit` (5 requests / 15 min)
 
-### Frontend Enhancements
-1. Form validation
-2. API integration
-3. Protected routes
-4. User state management
-5. Error handling
+#### Products (`/api/products`)
 
-### Production Ready
-1. Environment variables
-2. CORS configuration
-3. Rate limiting
-4. Security headers
-5. Docker containerization
+- `GET /` — list all products (auth required)
+- `GET /enabled` — list enabled products (auth required)
+- `POST /` — create product (auth required; validated)
+- `PUT /:id` — update product (auth required; validated)
+- `DELETE /:id` — delete product (auth required)
 
-## 🔐 Environment Variables
+#### Promotions (`/api/promotions`)
 
-Create `.env` files:
+- `GET /` — list promotions (auth required)
+- `GET /enabled` — list enabled promotions
+- `POST /` — create promotion (auth required; validated)
+- `PUT /:id` — update promotion (auth required; validated)
+- `PATCH /:id/enabled` — toggle enabled
+- `DELETE /:id` — delete promotion
+- `GET /:id/slabs` — list weighted promotion slabs
 
-**Backend (.env)**
-```
-PORT=3000
-JWT_SECRET=your_jwt_secret
-DB_CONNECTION_STRING=your_db_url
-```
+#### Orders (`/api/orders`)
 
-**Frontend (.env)**
-```
-VITE_API_URL=http://localhost:3000
-```
+- `POST /` — create order (auth required; validated)
+- `GET /` — list orders (auth required)
+- `GET /:id` — get order by id (auth required)
 
-## 📦 Key Dependencies
+### Core Concepts
 
-### Frontend
-- `react-router-dom` - Routing
-- `@radix-ui/*` - Headless UI primitives
-- `tailwindcss` - Styling
-- `lucide-react` - Icons
+- Authentication: JWT access/refresh tokens, stored server-side for refresh lifecycle
+- Rate Limiting: in-memory limiter adds `X-RateLimit-*` headers and 429 when exceeded
+- Validation: `express-validator` middleware for auth/product/promotion/order payloads
+- Security: Helmet CSP, strict CORS, body size limits, centralized error handler
 
-### Backend
-- `express` - Web framework
-- `@types/express` - TypeScript types
-- `ts-node-dev` - Development server
+### Orders & Discounts
 
-Ready to build your authentication system! 🚀
+- Line subtotal: `unit_price * quantity`
+- Discount types:
+  - Percentage: `line_subtotal * percentage_rate / 100`
+  - Fixed: `fixed_amount * quantity`
+  - Weighted: applies slabs by total line weight (grams); `unit_discount * discountUnitsPerItem * quantity`
+- Line total: `max(0, line_subtotal - line_discount)`
+- Order totals: `grand_total = subtotal - total_discount + shipping_cost`
+
+## Frontend
+
+### Scripts
+
+- `npm run dev` — start Vite dev server
+- `npm run build` — type check and build (`tsc -b && vite build`)
+- `npm run preview` — preview built app
+- `npm run lint` — run ESLint
+
+### Environment Variables
+
+- `VITE_API_URL` — backend base URL (default `http://localhost:3000`)
+
+### Run Locally
+
+1. Create `.env` in `frontend/` if overriding `API_BASE_URL`:
+
+   ```env
+   VITE_API_URL=http://localhost:3000
+   ```
+
+2. Install dependencies: `npm install` in `frontend/`
+3. Start dev server: `npm run dev` (default `http://localhost:5173`)
+
+### Features
+
+- Orders
+  - List orders with sorting, tabs, and search suggestions
+  - Create order with product picker, promotion application, shipping and notes
+  - Payment breakdown shows subtotal, discount, shipping, total, and promotion label
+- Products
+  - Manage products (create/update/delete) with price/weight and status
+  - Enabled products endpoint used for selection
+- Promotions
+  - Manage promotions (CRUD, enable/disable)
+  - Supports percentage, fixed, and weighted discounts with slabs
+
+### Key Files
+
+- API client: `frontend/src/lib/api.ts`
+- Query client: `frontend/src/lib/queryClient.ts`
+- Orders hooks/components: `frontend/src/features/orders/*`
+- Products hooks/components: `frontend/src/features/products/*`
+- Promotions hooks/components: `frontend/src/features/promotions/*`
+- Pages: `frontend/src/pages/*` (e.g., `OrderCreatePage.tsx`, `PromotionsPage.tsx`)
+
+### UI/State
+
+- Routing: React Router
+- Data fetching: TanStack Query
+- UI components: shadcn/ui + Radix primitives
+- Styling: Tailwind CSS (v4), utility-first with `@tailwindcss/vite`
+
+## Development Workflow
+
+- Start backend (`localhost:3000`) and frontend (`localhost:5173`)
+- Login/signup to obtain tokens; frontend stores tokens in `localStorage`
+- Protected API calls automatically attach `Authorization: Bearer <token>` and refresh on 401
+
+## Deployment Notes
+
+- Set production `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`
+- Enable SSL for PostgreSQL (`ssl.rejectUnauthorized=false` in production)
+- Serve frontend static assets via your chosen host; configure `VITE_API_URL` to point to backend
+
+## Troubleshooting
+
+- 401 on API: ensure valid `access_token`/`refresh_token` and backend CORS origin
+- PostgreSQL connection errors: check `DATABASE_URL` and network access
+- Promotions not applying: verify discount type/values and weighted slabs existence
