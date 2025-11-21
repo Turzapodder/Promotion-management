@@ -50,7 +50,6 @@ export default function ProductEditPage() {
         image: form.image,
         status: form.status,
         weight_unit: weightUnit,
-        image_url: form.image,
       })
     } else {
       updateProduct(existing!.id, {

@@ -208,6 +208,10 @@ class ApiClient {
   }
 
   // Products API
+  async getProducts(): Promise<Array<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' }>> {
+    const response = await this.request<Array<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' }>>('/api/products');
+    return response.data!;
+  }
   async getEnabledProducts(): Promise<Array<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' }>> {
     const response = await this.request<Array<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' }>>('/api/products/enabled');
     return response.data!;
@@ -231,6 +235,74 @@ class ApiClient {
 
   async deleteProduct(id: number): Promise<void> {
     await this.request<void>(`/api/products/${id}`, { method: 'DELETE' });
+  }
+
+  // Promotions API
+  async getPromotions(): Promise<Array<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean; discount_type?: 'percentage' | 'fixed' | 'weighted'; percentage_rate?: number; fixed_amount?: number }>> {
+    const response = await this.request<Array<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean; discount_type?: 'percentage' | 'fixed' | 'weighted'; percentage_rate?: number; fixed_amount?: number }>>('/api/promotions');
+    return response.data!;
+  }
+
+  async getEnabledPromotions(): Promise<Array<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean; discount_type?: 'percentage' | 'fixed' | 'weighted'; percentage_rate?: number; fixed_amount?: number }>> {
+    const response = await this.request<Array<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean; discount_type?: 'percentage' | 'fixed' | 'weighted'; percentage_rate?: number; fixed_amount?: number }>>('/api/promotions/enabled');
+    return response.data!;
+  }
+
+  async createPromotion(input: { title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled?: boolean; discount_type?: 'percentage' | 'fixed' | 'weighted'; percentage_rate?: number; fixed_amount?: number }): Promise<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean; discount_type?: 'percentage' | 'fixed' | 'weighted'; percentage_rate?: number; fixed_amount?: number }> {
+    const response = await this.request<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean; discount_type?: 'percentage' | 'fixed' | 'weighted'; percentage_rate?: number; fixed_amount?: number }>('/api/promotions', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return response.data!;
+  }
+
+  async updatePromotion(id: number, updates: { title?: string; start_date?: string; end_date?: string }): Promise<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean } | null> {
+    const response = await this.request<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean } | null>(`/api/promotions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    return response.data!;
+  }
+
+  async setPromotionEnabled(id: number, enabled: boolean): Promise<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean } | null> {
+    const response = await this.request<{ id: number; title: string; description?: string; start_date: string; end_date: string; banner_url?: string; enabled: boolean } | null>(`/api/promotions/${id}/enabled`, {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    });
+    return response.data!;
+  }
+
+  async deletePromotion(id: number): Promise<void> {
+    await this.request<void>(`/api/promotions/${id}`, { method: 'DELETE' });
+  }
+
+  async getPromotionSlabs(id: number): Promise<Array<{ id: number; promotion_id: number; min_weight: number; max_weight: number; unit_weight: number; unit_discount: number }>> {
+    const response = await this.request<Array<{ id: number; promotion_id: number; min_weight: number; max_weight: number; unit_weight: number; unit_discount: number }>>(`/api/promotions/${id}/slabs`);
+    return response.data!;
+  }
+
+  // Orders API
+  async getOrders(): Promise<Array<{ id: number; customer_name: string; subtotal: number; total_discount: number; grand_total: number; created_at: string }>> {
+    const response = await this.request<Array<{ id: number; customer_name: string; subtotal: number; total_discount: number; grand_total: number; created_at: string }>>('/api/orders');
+    return response.data!;
+  }
+  async getOrderById(id: number): Promise<{ order: any; items: any[] } | null> {
+    const response = await this.request<{ order: any; items: any[] } | null>(`/api/orders/${id}`);
+    return response.data!;
+  }
+  async updateOrderStatus(id: number, status: 'Created' | 'Shipped' | 'Delivered' | 'Complete'): Promise<any> {
+    const response = await this.request<any>(`/api/orders/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    return response.data!;
+  }
+  async createOrder(input: { customer_name: string; customer_address?: string; customer_phone?: string; notes?: string; promotion_id?: number; shipping_cost?: number; items: Array<{ product_id: number; name: string; unit_price: number; quantity: number; unit_weight: number }> }): Promise<{ order: any; items: any[] }> {
+    const response = await this.request<{ order: any; items: any[] }>('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return response.data!;
   }
 }
 

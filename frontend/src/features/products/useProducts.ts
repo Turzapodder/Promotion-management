@@ -7,8 +7,8 @@ export function useProducts() {
   const queryClient = useQueryClient()
   const [imageById, setImageById] = useState<Record<number, string>>({})
   const { data: serverProducts = [] } = useQuery({
-    queryKey: ['products', 'enabled'],
-    queryFn: () => apiClient.getEnabledProducts(),
+    queryKey: ['products'],
+    queryFn: () => apiClient.getProducts(),
   })
   const productsState: Product[] = useMemo(() => {
     return serverProducts.map((row) => ({
@@ -50,7 +50,7 @@ export function useProducts() {
       if (created?.id && typeof created.id === 'number') {
         setImageById((prev) => ({ ...prev, [created.id!]: variables.image }))
       }
-      queryClient.invalidateQueries({ queryKey: ['products', 'enabled'] })
+      queryClient.invalidateQueries({ queryKey: ['products'] })
     },
   })
   const addProduct = (p: Omit<Product, 'id'>) => {
@@ -60,7 +60,7 @@ export function useProducts() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiClient.deleteProduct(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products', 'enabled'] })
+      queryClient.invalidateQueries({ queryKey: ['products'] })
     },
   })
   const removeProduct = (id: string) => {
@@ -88,7 +88,7 @@ export function useProducts() {
       if (variables?.updates?.image && variables.id) {
         setImageById((prev) => ({ ...prev, [variables.id]: variables.updates!.image! }))
       }
-      queryClient.invalidateQueries({ queryKey: ['products', 'enabled'] })
+      queryClient.invalidateQueries({ queryKey: ['products'] })
     },
   })
   const updateProduct = (id: string, updates: Partial<Product>) => {
@@ -127,9 +127,10 @@ export function useProducts() {
 
   const suggestions = useMemo(() => {
     if (!query) return [] as Product[]
-    return productsState.filter((p) =>
-      p.name.toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 6)
+    return productsState
+      .filter((p) => p.status === 'active')
+      .filter((p) => p.name.toLowerCase().includes(query.toLowerCase()))
+      .slice(0, 6)
   }, [productsState, query])
 
   const applySearch = (value: string) => {

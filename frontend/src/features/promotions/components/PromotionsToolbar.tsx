@@ -32,18 +32,8 @@ export function PromotionsToolbar({
 }) {
   return (
     <div className="flex items-center gap-3 px-4 lg:px-6 py-4">
-      <Select defaultValue="last30">
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Date range" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="last7">Jan 24 - Jan 30, 2024</SelectItem>
-          <SelectItem value="last30">Jan 1 - Jan 30, 2024</SelectItem>
-        </SelectContent>
-      </Select>
       <div className="flex-1" />
       <Button variant="outline">Export</Button>
-      <Button variant="outline">More actions</Button>
       <Button className="bg-primary text-primary-foreground" onClick={onCreate}>Create promotion</Button>
       <div className="w-full" />
       <Tabs value={tab} onValueChange={(v) => onTab(v as PromotionsTab)}>

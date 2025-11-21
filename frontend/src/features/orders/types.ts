@@ -8,7 +8,7 @@ export type Order = {
   delivery: string
   items: number
   fulfillment: 'fulfilled' | 'unfulfilled'
-  status: 'open' | 'closed'
+  status: 'Created' | 'Shipped' | 'Delivered' | 'Complete'
   lineItems?: { productId: string; name: string; price: number; qty: number }[]
   notes?: string
   shippingAddress?: { name?: string; address?: string; city?: string; state?: string; zip?: string; country?: string; phone?: string }

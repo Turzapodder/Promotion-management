@@ -1,30 +1,51 @@
-import { useEffect, useMemo, useState } from 'react'
-import { MOCK_ORDERS } from './data'
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api'
 import type { Order, OrdersTab, SortDir, SortKey } from './types'
 
 export function useOrders() {
-  const [ordersState, setOrdersState] = useState<Order[]>(() => {
-    const raw = localStorage.getItem('orders')
-    if (raw) {
-      try { return JSON.parse(raw) as Order[] } catch { return MOCK_ORDERS }
-    }
-    return MOCK_ORDERS
+  const queryClient = useQueryClient()
+  const { data: serverOrders = [] } = useQuery({
+    queryKey: ['orders'],
+    queryFn: () => apiClient.getOrders(),
   })
+  const ordersState: Order[] = useMemo(() => serverOrders.map((o: any) => ({
+    id: String(o.id),
+    orderNo: `#${o.id}`,
+    customer: o.customer_name,
+    date: new Date(o.created_at).toISOString(),
+    total: o.grand_total,
+    status: (o as any).status || 'Created',
+    payment: 'success',
+    fulfillment: 'unfulfilled',
+    delivery: 'N/A',
+    items: 0,
+  })), [serverOrders])
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [tab, setTab] = useState<OrdersTab>('all')
 
-  const addOrder = (o: Omit<Order, 'id'>) => {
-    const id = `o-${Math.random().toString(36).slice(2, 8)}`
-    setOrdersState((prev) => [{ id, ...o }, ...prev])
-  }
+  const createMutation = useMutation({
+    mutationFn: (payload: any) => apiClient.createOrder(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
+  })
+  const addOrder = (payload: any) => createMutation.mutate(payload)
   const removeOrder = (id: string) => {
-    setOrdersState((prev) => prev.filter((o) => o.id !== id))
+    queryClient.setQueryData(['orders'], (prev: any) => Array.isArray(prev) ? prev.filter((o: any) => String(o.id) !== id) : prev)
   }
   const updateOrder = (id: string, updates: Partial<Order>) => {
-    setOrdersState((prev) => prev.map((o) => (o.id === id ? { ...o, ...updates } : o)))
+    queryClient.setQueryData(['orders'], (prev: any) => Array.isArray(prev) ? prev.map((o: any) => String(o.id) === id ? { ...o, ...updates } : o) : prev)
+  }
+  const setOrderStatus = (id: string, status: Order['status']) => {
+    const idNum = parseInt(id, 10)
+    if (Number.isNaN(idNum)) return
+    apiClient.updateOrderStatus(idNum, status).then(() => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    }).catch(() => {})
   }
   const getOrderById = (id: string) => ordersState.find((o) => o.id === id)
 
@@ -39,9 +60,9 @@ export function useOrders() {
         case 'unpaid':
           return o.payment === 'pending'
         case 'open':
-          return o.status === 'open'
+          return o.status !== 'Complete'
         case 'closed':
-          return o.status === 'closed'
+          return o.status === 'Complete'
         default:
           return true
       }
@@ -76,9 +97,7 @@ export function useOrders() {
     setQuery('')
   }
 
-  useEffect(() => {
-    try { localStorage.setItem('orders', JSON.stringify(ordersState)) } catch {}
-  }, [ordersState])
+  
 
   return {
     orders: visibleOrders,
@@ -86,6 +105,7 @@ export function useOrders() {
     addOrder,
     removeOrder,
     updateOrder,
+    setOrderStatus,
     getOrderById,
     tab,
     setTab,

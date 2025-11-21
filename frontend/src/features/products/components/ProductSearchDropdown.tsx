@@ -49,6 +49,8 @@ export function ProductSearchDropdown({
               <button
                 key={p.id}
                 className="flex w-full items-center gap-2 px-2 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   onSelect(p.name)
                   setOpen(false)

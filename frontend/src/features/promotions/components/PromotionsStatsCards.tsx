@@ -7,7 +7,8 @@ export function PromotionsStatsCards({ promotions }: { promotions: Promotion[] }
   const total = promotions.length
   const active = promotions.filter((p) => p.enabled).length
   const disabled = promotions.filter((p) => !p.enabled).length
-  const upcoming = promotions.filter((p) => new Date(p.startDate).getTime() > Date.now()).length
+  const now = new Date().getTime()
+  const upcoming = promotions.filter((p) => new Date(p.startDate).getTime() > now).length
 
   return (
     <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
