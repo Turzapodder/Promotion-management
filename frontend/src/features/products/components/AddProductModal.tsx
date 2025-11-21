@@ -9,17 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import type { Product } from '@/features/products/types'
 
-export function AddProductModal({ onAdd }: { onAdd: (p: Omit<Product, 'id'>) => void }) {
-  const [open, setOpen] = useState(false)
+export function AddProductModal({ onAdd, open, onOpenChange }: { onAdd: (p: Omit<Product, 'id'>) => void; open?: boolean; onOpenChange?: (v: boolean) => void }) {
+  const [openState, setOpenState] = useState(false)
   const [form, setForm] = useState({
     name: '',
     description: '',
     price: '',
     weight: '',
+    stock: '',
     status: 'active' as Product['status'],
   })
   const [gallery, setGallery] = useState<string[]>([])
   const [imageInput, setImageInput] = useState('')
+  const [weightUnit, setWeightUnit] = useState<'gm' | 'kg'>('kg')
 
   const addImage = () => {
     if (!imageInput) return
@@ -30,6 +32,7 @@ export function AddProductModal({ onAdd }: { onAdd: (p: Omit<Product, 'id'>) => 
   const submit = () => {
     const priceNum = Number(form.price)
     const weightNum = Number(form.weight)
+    const stockNum = Number(form.stock)
     if (!form.name || Number.isNaN(priceNum) || Number.isNaN(weightNum)) return
     onAdd({
       name: form.name,
@@ -39,18 +42,22 @@ export function AddProductModal({ onAdd }: { onAdd: (p: Omit<Product, 'id'>) => 
       weight: weightNum,
       sku: `SKU-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
       rating: 0,
-      quantity: 0,
+      quantity: Number.isNaN(stockNum) ? 0 : stockNum,
       image: gallery[0] || 'https://via.placeholder.com/40',
       status: form.status,
+      weight_unit: weightUnit,
+      // @ts-expect-error pass extra to backend
+      image_url: gallery[0] || imageInput,
     })
-    setOpen(false)
-    setForm({ name: '', description: '', price: '', weight: '', status: 'active' })
+    ;(onOpenChange ?? setOpenState)(false)
+    setForm({ name: '', description: '', price: '', weight: '', stock: '', status: 'active' })
     setGallery([])
     setImageInput('')
+    setWeightUnit('kg')
   }
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+    <DialogPrimitive.Root open={open ?? openState} onOpenChange={onOpenChange ?? setOpenState}>
       <DialogPrimitive.Trigger asChild>
         <Button className="bg-primary text-primary-foreground">New Product</Button>
       </DialogPrimitive.Trigger>
@@ -73,20 +80,37 @@ export function AddProductModal({ onAdd }: { onAdd: (p: Omit<Product, 'id'>) => 
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Name</label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  <Input placeholder="e.g. Blue Armchair" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Description</label>
-                  <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-background border-input w-full rounded-md border p-3 text-sm" rows={5} />
+                  <textarea placeholder="Short description of the product" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-background border-input w-full rounded-md border p-3 text-sm" rows={5} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Price</label>
-                    <Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+                    <Input placeholder="e.g. 199.99" type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Weight</label>
-                    <Input type="number" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+                    <div className="flex items-center gap-2">
+                      <Input placeholder="e.g. 1.5" type="number" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+                      <Select value={weightUnit} onValueChange={(v) => setWeightUnit(v as 'gm' | 'kg')}>
+                        <SelectTrigger className="w-24">
+                          <SelectValue placeholder="Unit" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[102]">
+                          <SelectItem value="gm">gm</SelectItem>
+                          <SelectItem value="kg">kg</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Stock</label>
+                    <Input placeholder="e.g. 25" type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -95,7 +119,7 @@ export function AddProductModal({ onAdd }: { onAdd: (p: Omit<Product, 'id'>) => 
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[102]">
                       <SelectItem value="new">New</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="deactive">Deactive</SelectItem>
@@ -117,7 +141,7 @@ export function AddProductModal({ onAdd }: { onAdd: (p: Omit<Product, 'id'>) => 
                   </Avatar>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Input placeholder="Image URL" value={imageInput} onChange={(e) => setImageInput(e.target.value)} />
+                  <Input placeholder="Paste image URL (optional)" value={imageInput} onChange={(e) => setImageInput(e.target.value)} />
                   <Button variant="outline" onClick={addImage}><UploadIcon className="size-4" /></Button>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">

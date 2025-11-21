@@ -206,6 +206,32 @@ class ApiClient {
   isAuthenticated(): boolean {
     return !!this.getAccessToken();
   }
+
+  // Products API
+  async getEnabledProducts(): Promise<Array<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' }>> {
+    const response = await this.request<Array<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' }>>('/api/products/enabled');
+    return response.data!;
+  }
+
+  async createProduct(input: { name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight: number; weight_unit?: 'gm' | 'kg' }): Promise<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' }> {
+    const response = await this.request<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' }>('/api/products', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return response.data!;
+  }
+
+  async updateProduct(id: number, updates: Partial<{ name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' }>): Promise<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' } | null> {
+    const response = await this.request<{ id: number; name: string; description?: string; price: number; stock?: number; is_enabled?: boolean; image_url?: string; status?: string; weight?: number; weight_unit?: 'gm' | 'kg' } | null>(`/api/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    return response.data!;
+  }
+
+  async deleteProduct(id: number): Promise<void> {
+    await this.request<void>(`/api/products/${id}`, { method: 'DELETE' });
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

@@ -1,13 +1,14 @@
 import { useOrders } from '@/features/orders/useOrders'
+import { useNavigate } from 'react-router-dom'
 import { OrdersStatsCards } from '@/features/orders/components/OrdersStatsCards'
 import { OrdersToolbar } from '@/features/orders/components/OrdersToolbar'
 import { OrdersTable } from '@/features/orders/components/OrdersTable'
 
 export default function OrdersPage() {
+  const navigate = useNavigate()
   const {
     orders,
     allOrders,
-    addOrder,
     removeOrder,
     query,
     setQuery,
@@ -39,9 +40,7 @@ export default function OrdersPage() {
         onSortDir={setSortDir}
         tab={tab}
         onTab={setTab}
-        onCreate={() => {
-          addOrder({ orderNo: `#${Math.floor(Math.random() * 9000) + 1000}`, date: new Date().toISOString().slice(0, 10), customer: 'New Customer', payment: 'pending', total: 0, delivery: 'N/A', items: 0, fulfillment: 'unfulfilled', status: 'open' })
-        }}
+        onCreate={() => navigate('/dashboard/orders/new')}
       />
       <OrdersTable orders={orders} onDelete={removeOrder} />
     </div>

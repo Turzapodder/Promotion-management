@@ -1,32 +1,101 @@
-import { useEffect, useMemo, useState } from 'react'
-import { MOCK_PRODUCTS } from './data'
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api'
 import type { Product, SortDir, SortKey } from './types'
 
 export function useProducts() {
-  const [productsState, setProductsState] = useState<Product[]>(() => {
-    const raw = localStorage.getItem('products')
-    if (raw) {
-      try { return JSON.parse(raw) as Product[] } catch { return MOCK_PRODUCTS }
-    }
-    return MOCK_PRODUCTS
+  const queryClient = useQueryClient()
+  const [imageById, setImageById] = useState<Record<number, string>>({})
+  const { data: serverProducts = [] } = useQuery({
+    queryKey: ['products', 'enabled'],
+    queryFn: () => apiClient.getEnabledProducts(),
   })
+  const productsState: Product[] = useMemo(() => {
+    return serverProducts.map((row) => ({
+      id: String(row.id ?? ''),
+      name: row.name,
+      description: row.description,
+      category: 'General',
+      price: row.price,
+      weight: (row as any).weight ?? 0,
+      weight_unit: (row as any).weight_unit ?? 'kg',
+      sku: '',
+      rating: 0,
+      quantity: row.stock ?? 0,
+      image: (row as any).image_url ?? imageById[row.id ?? -1] ?? 'https://via.placeholder.com/40',
+      status: (row as any).status ?? (row.is_enabled === false ? 'deactive' : 'active'),
+    }))
+  }, [serverProducts, imageById])
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'new' | 'deactive'>('all')
 
+  const createMutation = useMutation({
+    mutationFn: (input: Omit<Product, 'id'>) => {
+      return apiClient.createProduct({
+        name: input.name,
+        description: input.description,
+        price: input.price,
+        stock: input.quantity ?? 0,
+        is_enabled: input.status !== 'deactive',
+        image_url: (input as any).image_url ?? input.image,
+        status: input.status,
+        weight: input.weight,
+        weight_unit: (input as any).weight_unit ?? 'kg',
+      })
+    },
+    onSuccess: (created, variables) => {
+      if (created?.id && typeof created.id === 'number') {
+        setImageById((prev) => ({ ...prev, [created.id!]: variables.image }))
+      }
+      queryClient.invalidateQueries({ queryKey: ['products', 'enabled'] })
+    },
+  })
   const addProduct = (p: Omit<Product, 'id'>) => {
-    const id = `p-${Math.random().toString(36).slice(2, 8)}`
-    setProductsState((prev) => [{ id, ...p }, ...prev])
+    createMutation.mutate(p)
   }
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.deleteProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products', 'enabled'] })
+    },
+  })
   const removeProduct = (id: string) => {
-    setProductsState((prev) => prev.filter((p) => p.id !== id))
+    const numericId = parseInt(id, 10)
+    if (!Number.isNaN(numericId)) {
+      deleteMutation.mutate(numericId)
+    }
   }
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: number; updates: Partial<Product> }) => {
+      return apiClient.updateProduct(id, {
+        name: updates.name,
+        description: updates.description,
+        price: updates.price,
+        stock: updates.quantity,
+        is_enabled: updates.status ? updates.status !== 'deactive' : undefined,
+        image_url: (updates as any).image_url ?? updates.image,
+        status: updates.status,
+        weight: updates.weight,
+        weight_unit: (updates as any).weight_unit,
+      })
+    },
+    onSuccess: (_, variables) => {
+      if (variables?.updates?.image && variables.id) {
+        setImageById((prev) => ({ ...prev, [variables.id]: variables.updates!.image! }))
+      }
+      queryClient.invalidateQueries({ queryKey: ['products', 'enabled'] })
+    },
+  })
   const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProductsState((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)))
+    const numericId = parseInt(id, 10)
+    if (!Number.isNaN(numericId)) {
+      updateMutation.mutate({ id: numericId, updates })
+    }
   }
 
   const getProductById = (id: string) => productsState.find((p) => p.id === id)
@@ -68,9 +137,7 @@ export function useProducts() {
     setQuery('')
   }
 
-  useEffect(() => {
-    try { localStorage.setItem('products', JSON.stringify(productsState)) } catch { /* empty */ }
-  }, [productsState])
+  
 
   return {
     products: visibleProducts,

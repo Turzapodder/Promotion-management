@@ -10,13 +10,26 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Product } from '@/features/products/types'
 
-export function ProductsTable({ products, onDelete }: { products: Product[]; onDelete: (id: string) => void }) {
+export function ProductsTable({ products, onDelete, onAddNew }: { products: Product[]; onDelete: (id: string) => void; onAddNew?: () => void }) {
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const navigate = useNavigate()
 
   const toggleSelect = (id: string) => {
     setSelected((s) => ({ ...s, [id]: !s[id] }))
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="px-4 lg:px-6">
+        <div className="flex items-center justify-center rounded-lg border p-10">
+          <div className="flex flex-col items-center gap-3">
+            <span className="text-muted-foreground">No products added</span>
+            <Button className="bg-primary text-primary-foreground" onClick={() => onAddNew?.()}>Add Product</Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -30,6 +43,7 @@ export function ProductsTable({ products, onDelete }: { products: Product[]; onD
             <TableHead>Product</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Inventory</TableHead>
+            <TableHead>Weight</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Vendor</TableHead>
             <TableHead className="w-14">Action</TableHead>
@@ -70,6 +84,7 @@ export function ProductsTable({ products, onDelete }: { products: Product[]; onD
                 </Badge>
               </TableCell>
               <TableCell>{p.quantity} in stock</TableCell>
+              <TableCell>{p.weight} {p.weight_unit ?? 'kg'}</TableCell>
               <TableCell>{p.category}</TableCell>
               <TableCell>Acme Inc.</TableCell>
               <TableCell>

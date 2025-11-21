@@ -18,6 +18,8 @@ export function ProductsToolbar({
   statusFilter,
   onStatusFilter,
   onAdd,
+  modalOpen,
+  onModalOpenChange,
 }: {
   query: string
   onQuery: (v: string) => void
@@ -30,6 +32,8 @@ export function ProductsToolbar({
   statusFilter: 'all' | 'active' | 'new' | 'deactive'
   onStatusFilter: (v: 'all' | 'active' | 'new' | 'deactive') => void
   onAdd: (p: Omit<Product, 'id'>) => void
+  modalOpen?: boolean
+  onModalOpenChange?: (v: boolean) => void
 }) {
   return (
     <div className="flex items-center gap-3 px-4 lg:px-6 py-4">
@@ -57,7 +61,7 @@ export function ProductsToolbar({
       <Button variant="outline" onClick={() => onSortDir(sortDir === 'asc' ? 'desc' : 'asc')}>
         {sortDir === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
       </Button>
-      <AddProductModal onAdd={onAdd} />
+      <AddProductModal onAdd={onAdd} open={modalOpen} onOpenChange={onModalOpenChange} />
     </div>
   )
 }

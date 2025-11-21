@@ -6,6 +6,7 @@ import SignupPage from "./pages/SignupPage"
 import DashboardPage from "./pages/DashboardPage"
 import DashboardHome from "./pages/DashboardHome"
 import OrdersPage from "./pages/OrdersPage"
+import OrderCreatePage from "./pages/OrderCreatePage"
 import PromotionsPage from "./pages/PromotionsPage"
 import ProductsPage from "./pages/ProductsPage"
 import ProductEditPage from "./pages/ProductEditPage"
@@ -29,6 +30,8 @@ function App() {
           }>
             <Route index element={<DashboardHome />} />
             <Route path="orders" element={<OrdersPage />} />
+            <Route path="orders/new" element={<OrderCreatePage />} />
+            <Route path="orders/:id" element={<OrderCreatePage />} />
             <Route path="promotions" element={<PromotionsPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="products/new" element={<ProductEditPage />} />

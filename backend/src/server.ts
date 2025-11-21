@@ -6,6 +6,20 @@ const PORT = process.env.PORT || 3000;
 // Test database connection and start server
 const startServer = async () => {
   try {
+    // Run simple startup migrations for products table (dev-safe, idempotent)
+    await pool.query(`
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
+    `);
+    await pool.query(`
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+    `);
+    await pool.query(`
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS weight NUMERIC NOT NULL DEFAULT 1;
+    `);
+    await pool.query(`
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS weight_unit TEXT DEFAULT 'kg';
+    `);
+
     // Test database connection
     await pool.query('SELECT NOW()');
     console.log('Database connection established');

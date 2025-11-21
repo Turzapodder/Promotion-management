@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useProducts } from '@/features/products/useProducts'
 import { ProductsToolbar } from '@/features/products/components/ProductsToolbar'
 import { ProductsTable } from '@/features/products/components/ProductsTable'
 import { ProductsStatsCards } from '@/features/products/components/ProductsStatsCards'
 
 export default function ProductsPage() {
+  const [addOpen, setAddOpen] = useState(false)
   const {
     products,
     allProducts,
@@ -40,8 +42,10 @@ export default function ProductsPage() {
         statusFilter={statusFilter}
         onStatusFilter={setStatusFilter}
         onAdd={addProduct}
+        modalOpen={addOpen}
+        onModalOpenChange={setAddOpen}
       />
-      <ProductsTable products={products} onDelete={removeProduct} />
+      <ProductsTable products={products} onDelete={removeProduct} onAddNew={() => setAddOpen(true)} />
     </div>
   )
 }

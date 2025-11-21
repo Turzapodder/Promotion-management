@@ -61,7 +61,7 @@ export function usePromotions() {
   }
 
   useEffect(() => {
-    try { localStorage.setItem('promotions', JSON.stringify(state)) } catch {}
+    try { localStorage.setItem('promotions', JSON.stringify(state)) } catch { /* empty */ }
   }, [state])
 
   return {

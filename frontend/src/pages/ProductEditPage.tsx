@@ -20,10 +20,12 @@ export default function ProductEditPage() {
     description: existing?.description || '',
     price: existing?.price?.toString() || '',
     weight: existing?.weight?.toString() || '',
+    stock: existing?.quantity?.toString() || '',
     status: existing?.status || 'active',
     image: existing?.image || 'https://via.placeholder.com/200',
   })
-
+  const [weightUnit, setWeightUnit] = useState<'gm' | 'kg'>(existing?.weight_unit || 'kg')
+  console.log(form);
   useEffect(() => {
     if (!isNew && !existing) {
       // If editing but no product found, go back
@@ -44,9 +46,11 @@ export default function ProductEditPage() {
         weight: weightNum,
         sku: existing?.sku || `SKU-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
         rating: existing?.rating || 0,
-        quantity: existing?.quantity || 0,
+        quantity: Number(form.stock) || existing?.quantity || 0,
         image: form.image,
         status: form.status,
+        weight_unit: weightUnit,
+        image_url: form.image,
       })
     } else {
       updateProduct(existing!.id, {
@@ -56,6 +60,7 @@ export default function ProductEditPage() {
         weight: weightNum,
         status: form.status,
         image: form.image,
+        weight_unit: weightUnit,
       })
     }
     navigate('/dashboard/products')
@@ -96,7 +101,24 @@ export default function ProductEditPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Weight</label>
-                <Input className='bg-[#efefef] min-h-[40px]' type="number" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+                <div className="flex items-center gap-2">
+                  <Input className='bg-[#efefef] min-h-[40px]' type="number" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+                  <Select value={weightUnit} onValueChange={(v) => setWeightUnit(v as 'gm' | 'kg')}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue placeholder="Unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gm">gm</SelectItem>
+                      <SelectItem value="kg">kg</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Stock</label>
+                <Input className='bg-[#efefef] min-h-[40px]' type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
               </div>
             </div>
             <div className="space-y-2">

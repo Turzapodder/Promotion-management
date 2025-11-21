@@ -5,6 +5,7 @@ export type Product = {
   category: string
   price: number
   weight: number
+  weight_unit?: 'gm' | 'kg'
   sku: string
   rating: number
   quantity: number

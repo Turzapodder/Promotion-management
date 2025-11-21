@@ -6,11 +6,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { MoreVertical, XIcon } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Order } from '@/features/orders/types'
 
 export function OrdersTable({ orders, onDelete }: { orders: Order[]; onDelete: (id: string) => void }) {
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   const toggleSelect = (id: string) => {
     setSelected((s) => ({ ...s, [id]: !s[id] }))
@@ -71,8 +73,8 @@ export function OrdersTable({ orders, onDelete }: { orders: Order[]; onDelete: (
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => { /* view */ }}>View</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { /* edit */ }}>Edit</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate(`/dashboard/orders/${o.id}`)}>View</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate(`/dashboard/orders/${o.id}`)}>Edit</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setConfirmId(o.id)}>Delete</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

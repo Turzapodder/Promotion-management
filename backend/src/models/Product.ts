@@ -1,4 +1,4 @@
-import pool from '../config/db';
+import pool from '../config/database';
 
 export interface Product {
   id?: number;
@@ -7,16 +7,20 @@ export interface Product {
   price: number;
   stock?: number;
   is_enabled?: boolean;
+  image_url?: string;
+  status?: string; // expected: 'new' | 'active' | 'deactive'
+  weight: number;
+  weight_unit?: 'gm' | 'kg';
   created_at?: Date;
   updated_at?: Date;
 }
 
 export const ProductModel = {
   async create(product: Product): Promise<Product> {
-    const { name, description, price, stock, is_enabled } = product;
+    const { name, description, price, stock, is_enabled, image_url, status, weight, weight_unit } = product;
     const result = await pool.query(
-      'INSERT INTO products (name, description, price, stock, is_enabled) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, description, price, stock ?? 0, is_enabled ?? true]
+      'INSERT INTO products (name, description, price, stock, is_enabled, image_url, status, weight, weight_unit) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [name, description ?? null, price, stock ?? 0, is_enabled ?? true, image_url ?? null, status ?? 'active', weight, weight_unit ?? 'kg']
     );
     return result.rows[0];
   },
